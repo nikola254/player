@@ -5,8 +5,10 @@ from PyQt5.QtGui import *
 from PyQt5.QtWidgets import *
 from PyQt5.QtMultimedia import *
 from PyQt5.QtMultimediaWidgets import *
+from PyQt5.QtWidgets import QDialog, QVBoxLayout, QTextEdit, QPushButton, QMessageBox
+
 import Out_file
-#hello moscva
+ 
 ##################################################################################################
 # I made this media player by referring the following sources.                                   #
 # credits:-                                                                                      #
@@ -23,10 +25,71 @@ import Out_file
 ##################################################################################################
 
 
+class InfoDialog(QDialog):
+    def __init__(self, parent=None):
+        super(InfoDialog, self).__init__(parent)
+        self.setWindowTitle("Информация")
+        self.setGeometry(1200, 210, 500, 600)
+
+        # Создание окна вывода (QTextEdit)
+        self.output_text_edit = QTextEdit(self)
+        self.output_text_edit.setPlaceholderText("Вывод информации здесь...")
+        self.output_text_edit.setReadOnly(True)  # Установка только для чтения
+
+        # Создание окна ввода (QTextEdit)
+        self.input_text_edit = QTextEdit(self)
+        self.input_text_edit.setPlaceholderText("Введите информацию здесь...")
+
+        # Создание кнопки "Сохранить"
+        self.save_button = QPushButton("Сохранить", self)
+        self.save_button.clicked.connect(self.save_info)
+
+        # Создание кнопки "Закрыть"
+        self.close_button = QPushButton("Закрыть", self)
+        self.close_button.clicked.connect(self.close)
+
+        # Настройка компоновки
+        layout = QVBoxLayout(self)
+        layout.addWidget(self.output_text_edit, 2)  # Окно вывода занимает 2/3 диалога
+        layout.addWidget(self.input_text_edit, 1)   # Окно ввода занимает 1/3 диалога
+        layout.addWidget(self.save_button)
+        layout.addWidget(self.close_button)
+
+    def save_info(self):
+        # Получение информации из окна вывода
+        output_info = self.output_text_edit.toPlainText()
+
+        # Стандартный диалог выбора директории
+        folder_path = QFileDialog.getExistingDirectory(self, "Выберите папку для сохранения")
+
+        # Получение информации из окна ввода
+        input_info = self.input_text_edit.toPlainText()
+
+        # Проверка, была ли выбрана папка
+        if folder_path:
+            # Комбинирование информации из окна ввода и вывода
+            full_info = f"Введенная информация:\n{input_info}"
+
+            # Сохранение комбинированной информации в текстовый файл
+            output_text_file_path = os.path.join(folder_path, "saved_info.txt")
+            with open(output_text_file_path, "w", encoding="utf-8") as file:
+                file.write(full_info)
+
+            # Сохранение информации из окна вывода в виде изображения
+            image = QImage(self.output_text_edit.size(), QImage.Format_ARGB32_Premultiplied)
+            painter = QPainter(image)
+            self.output_text_edit.render(painter)
+            painter.end()
+            image_path = os.path.join(folder_path, "saved_image.png")
+            image.save(image_path)
+
+            # Сообщение пользователю о том, что информация сохранена успешно
+            QMessageBox.information(self, "Сохранено", f"Информация сохранена успешно в {folder_path}")
+
 class Window(QMainWindow):
     def __init__(self, parent=None, border=None):
         super(Window, self).__init__(parent)
-        self.resize(900, 600)
+        self.setGeometry(300, 210, 900, 600)
         self.setWindowTitle('Chitram Media Player')
         self.setWindowIcon(QIcon(':/icons/wicon_64x64.ico'))
         self.ui_init()
@@ -35,8 +98,8 @@ class Window(QMainWindow):
     def ui_init(self):
         # ---- Creating Menu bar Objects ---- #
         menu = self.menuBar()
-        file = menu.addMenu("File")
-        file.addAction("Open File")
+        file = menu.addMenu("Файл")
+        file.addAction("Открыть файл")
         file.triggered[QAction].connect(self.open_file)
 
         # ---- Creating Media Objects ---- #
@@ -71,30 +134,30 @@ class Window(QMainWindow):
         selection_model.selectionChanged.connect(self.playlist_selection_changed)
         self.playlistView.doubleClicked.connect(self.ply)
 
-        self.p_play = QPushButton("  Play Now ")
+        self.p_play = QPushButton("Запустить")
         self.p_play.setStyleSheet('background-color: rgb(32, 32, 32)')
         self.p_play.setEnabled(False)
         self.p_play.clicked.connect(self.ply)
 
-        self.rm = QPushButton(" Remove ")
-        self.rm.setToolTip('Remove Item from Playlist')
+        self.rm = QPushButton("Удалить")
+        self.rm.setToolTip('Удалить из плейлиста')
         self.rm.setStyleSheet('background-color: rgb(32, 32, 32)')
         self.rm.setEnabled(False)
         self.rm.clicked.connect(self.remove)
 
-        self.find = QPushButton(" Find ")
+        self.find = QPushButton("Определить")
         self.find.setIcon(QIcon(":/icons/find.png"))
-        self.find.setToolTip("Find")
+        self.find.setToolTip("Определить")
         self.find.setStyleSheet('background-color: rgb(32, 32, 32)')
         self.find.setEnabled(True)
-        self.find.clicked.connect(self.find_function)
+        self.find.clicked.connect(self.show_info_dialog)
 
         self.playback_Label = QLabel("")
         self.playback_Label.setToolTip('Playback Mode')
-        self.playback_Label.setFixedWidth(200)
+        self.playback_Label.setFixedWidth(500)
         self.playback_Label.setStyleSheet("color: silver;""border-style: solid;""border-width: 1px;""border-color: rgba(250, 128, 114, 95);""border-radius: 10px")
         self.playback_Label.setAlignment(Qt.AlignCenter)
-        self.playback_Label.setText("Current Playlist is in Loop Off")
+        self.playback_Label.setText(" Текущий список воспроизведения в цикле выключен")
 
         # ----- Creating time progress widgets ------ #
         self.currentTimeLabel = QLabel()
@@ -112,19 +175,19 @@ class Window(QMainWindow):
         self.totalTimeLabel.setText(hhmmss(0))
 
         # ------ Creating Control widgets ---------- #
-        self.plist = QPushButton(" Playlist")
+        self.plist = QPushButton(" Плейлист")
         self.plist.setIcon(QIcon(":/icons/plist.png"))
-        self.plist.setToolTip("Show Playlist")
+        self.plist.setToolTip(" Показать плейлист")
         self.plist.clicked.connect(self.plistview)
         self.plist.installEventFilter(self)
 
-        self.previous = QPushButton(" Prev")
+        self.previous = QPushButton(" Пред")
         self.previous.setIcon(QIcon(":/icons/previous.png"))
         self.previous.pressed.connect(self.playlist.previous)
         self.previous.setEnabled(False)
         self.previous.installEventFilter(self)
 
-        self.next = QPushButton(" Next")
+        self.next = QPushButton(" След")
         self.next.setIcon(QIcon(":/icons/next.png"))
         self.next.pressed.connect(self.playlist.next)
         self.next.setEnabled(False)
@@ -132,27 +195,27 @@ class Window(QMainWindow):
 
         self.skip_back = QPushButton()
         self.skip_back.setIcon(QIcon(":/icons/skip_back.png"))
-        self.skip_back.setToolTip('Skip 5 sec backward')
+        self.skip_back.setToolTip(' На 5 сек назад')
         self.skip_back.setEnabled(False)
         self.skip_back.clicked.connect(self.backward)
         self.skip_back.installEventFilter(self)
 
         self.play = QPushButton()
         self.play.setIcon(QIcon(":/icons/play.png"))
-        self.play.setToolTip("Play/Pause")
+        self.play.setToolTip(" Старт/Пауза")
         self.play.setEnabled(False)
         self.play.pressed.connect(self.play_video)
 
         self.stop = QPushButton()
         self.stop.setIcon(QIcon(":/icons/stop.png"))
-        self.stop.setToolTip("Stop")
+        self.stop.setToolTip(" Стоп")
         self.stop.setEnabled(False)
         self.stop.pressed.connect(self.mediaPlayer.stop)
         self.stop.installEventFilter(self)
 
         self.skip_forward = QPushButton()
         self.skip_forward.setIcon(QIcon(":/icons/skip_frwd.png"))
-        self.skip_forward.setToolTip('Skip 5 sec forward')
+        self.skip_forward.setToolTip(' На 5 сек вперед')
         self.skip_forward.setEnabled(False)
         self.skip_forward.clicked.connect(self.forward)
         self.skip_forward.installEventFilter(self)
@@ -187,14 +250,14 @@ class Window(QMainWindow):
 
         # --- playback speed ----#
         self.pb_speed = QPushButton("1x")
-        self.pb_speed.setToolTip("Playback Speed")
+        self.pb_speed.setToolTip("Скорость воспроизведения")
         self.pb_speed.setFixedWidth(50)
         self.pb_speed.setEnabled(False)
         self.menu = QMenu()
         self.menu.addAction("0.25x")
         self.menu.addAction("0.5x")
         self.menu.addAction("0.75x")
-        self.menu.addAction("1x       Normal")
+        self.menu.addAction("1x       Нормальное")
         self.menu.addAction("1.25x")
         self.menu.addAction("1.5x")
         self.menu.addAction("1.75x")
@@ -339,8 +402,9 @@ class Window(QMainWindow):
         else:
             self.stack.setCurrentIndex(0)
 
-    def find_function(self):
-        print("1")
+    def show_info_dialog(self):
+        info_dialog = InfoDialog(self)
+        info_dialog.exec_()
     # -- Function to change aspect ratio -- #
     def aspRatio(self):
         if self.aspr.isChecked():
@@ -396,25 +460,25 @@ class Window(QMainWindow):
             #print("playback mode changed to Loop")
             self.playlist.setPlaybackMode(QMediaPlaylist.Loop)
             self.playback.setIcon(QIcon(":/icons/loop_on.png"))
-            self.playback_Label.setText(" Current Playlist is in Loop")
+            self.playback_Label.setText(" Текущий список воспроизведения находится в цикле")
 
         elif self.playlist.playbackMode() == QMediaPlaylist.Loop:
             #print("playback mode changed to item loop")
             self.playlist.setPlaybackMode(QMediaPlaylist.CurrentItemInLoop)
             self.playback.setIcon(QIcon(":/icons/item_loop.png"))
-            self.playback_Label.setText(" Current Item is in Loop")
+            self.playback_Label.setText(" Текущий элемент находится в цикле")
 
         elif self.playlist.playbackMode() == QMediaPlaylist.CurrentItemInLoop:
             #print("playback mode changed to Random")
             self.playlist.setPlaybackMode(QMediaPlaylist.Random)
             self.playback.setIcon(QIcon(":/icons/shuffle_on.png"))
-            self.playback_Label.setText(" Current Playlist is in Shuffle")
+            self.playback_Label.setText(" Текущий список воспроизведения находится в случайном порядке")
 
         elif self.playlist.playbackMode() == QMediaPlaylist.Random:
             #print("playback mode changed to Sequntial")
             self.playlist.setPlaybackMode(QMediaPlaylist.Sequential)
             self.playback.setIcon(QIcon(":/icons/loop_off.png"))
-            self.playback_Label.setText(" Current Playlist is in Loop off")
+            self.playback_Label.setText(" Текущий список воспроизведения в цикле выключен")
 
     # --- Function to Play or Pause ----- #
     def play_video(self):
