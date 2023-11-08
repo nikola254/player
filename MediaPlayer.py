@@ -5,7 +5,7 @@ from PyQt5.QtGui import *
 from PyQt5.QtWidgets import *
 from PyQt5.QtMultimedia import *
 from PyQt5.QtMultimediaWidgets import *
-import icon_resource
+import Out_file
 
 ##################################################################################################
 # I made this media player by referring the following sources.                                   #
@@ -26,7 +26,7 @@ import icon_resource
 class Window(QMainWindow):
     def __init__(self, parent=None, border=None):
         super(Window, self).__init__(parent)
-        self.resize(860, 600)
+        self.resize(900, 600)
         self.setWindowTitle('Chitram Media Player')
         self.setWindowIcon(QIcon(':/icons/wicon_64x64.ico'))
         self.ui_init()
@@ -81,6 +81,13 @@ class Window(QMainWindow):
         self.rm.setStyleSheet('background-color: rgb(32, 32, 32)')
         self.rm.setEnabled(False)
         self.rm.clicked.connect(self.remove)
+
+        self.find = QPushButton(" Find ")
+        self.find.setIcon(QIcon(":/icons/find.png"))
+        self.find.setToolTip("Find")
+        self.find.setStyleSheet('background-color: rgb(32, 32, 32)')
+        self.find.setEnabled(True)
+        self.find.clicked.connect(self.find_function)
 
         self.playback_Label = QLabel("")
         self.playback_Label.setToolTip('Playback Mode')
@@ -212,11 +219,12 @@ class Window(QMainWindow):
         self.hbox_1.addWidget(self.time_slider)
         self.hbox_1.addWidget(self.totalTimeLabel)
         # -- hbox_2 layout contains control widgets in a group box --#
-        self.hbox_2.setSpacing(20)
+        self.hbox_2.setSpacing(10)
         self.hbox_2.addWidget(self.plist)
-        self.hbox_2.addSpacing(20)
+        self.hbox_2.addSpacing(10)
         self.hbox_2.addWidget(self.previous)
         self.hbox_2.addWidget(self.next)
+        self.hbox_2.addWidget(self.find)
         self.hbox_2.addStretch()
         self.hbox_2.addWidget(self.skip_back)
         self.hbox_2.addWidget(self.play)
@@ -331,6 +339,8 @@ class Window(QMainWindow):
         else:
             self.stack.setCurrentIndex(0)
 
+    def find_function(self):
+        print("1")
     # -- Function to change aspect ratio -- #
     def aspRatio(self):
         if self.aspr.isChecked():
