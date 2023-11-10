@@ -1,6 +1,8 @@
 import sys
 import os
+
 from PyQt5.QtCore import *
+from PyQt5.QtCore import QTimer
 from PyQt5.QtGui import *
 from PyQt5.QtWidgets import *
 from PyQt5.QtMultimedia import *
@@ -8,22 +10,6 @@ from PyQt5.QtMultimediaWidgets import *
 from PyQt5.QtWidgets import QDialog, QVBoxLayout, QTextEdit, QPushButton, QMessageBox
 
 import Out_file
- 
-##################################################################################################
-# I made this media player by referring the following sources.                                   #
-# credits:-                                                                                      #
-# https://codeloop.org/python-how-to-create-media-player-in-pyqt5/                               #
-# https://www.pythonguis.com/examples/python-multimedia-player/                                  #
-# https://stackoverflow.com/questions/41612790/pyqt5-videowidget-not-showing-in-layout           #
-# https://gist.github.com/QuantumCD/6245215                                                      #
-# ---------------------------------------------------------------------------------------------- #
-# Packaging PyQt5 applications for Windows:-                                                     #
-# https://www.pythonguis.com/tutorials/packaging-pyqt5-pyside2-applications-windows-pyinstaller/ #
-# ---------------------------------------------------------------------------------------------- #
-# PyQt5 Documentation : https://doc.qt.io/qtforpython-5/PySide2/QtMultimedia/QMediaPlayer.html   #
-# Book for reference  : "Create GUI Applications with Python&Qt5" by Martin Fitzpatrick          #
-##################################################################################################
-
 
 class InfoDialog(QDialog):
     def __init__(self, parent=None):
@@ -90,8 +76,12 @@ class Window(QMainWindow):
     def __init__(self, parent=None, border=None):
         super(Window, self).__init__(parent)
         self.setGeometry(300, 210, 900, 600)
-        self.setWindowTitle('Chitram Media Player')
+        self.setWindowTitle('AIM Player')
         self.setWindowIcon(QIcon(':/icons/wicon_64x64.ico'))
+        # --- Даем разрешение на дроп
+        self.setAcceptDrops(True)
+        self.timer = QTimer(self)
+        self.timer.timeout.connect(self.play_playlist_item)
         self.ui_init()
 
     # --- Mediaplayer UI ---- #
@@ -120,6 +110,17 @@ class Window(QMainWindow):
         self.mediaPlayer.stateChanged.connect(self.mediastate_changed)
         self.mediaPlayer.positionChanged.connect(self.position_changed)
         self.mediaPlayer.durationChanged.connect(self.duration_changed)
+
+        #Create text_edit
+        self.url_input = QLineEdit(self)
+        self.url_input.setPlaceholderText("Введите URL")
+        self.url_input.setFixedWidth(400)
+        self.url_input.returnPressed.connect(self.load_url)
+
+        # Создаем QPushButton для запуска навигации
+        self.go_button = QPushButton("Перейти", self)
+        self.go_button.setFixedWidth(80)
+        self.go_button.clicked.connect(self.load_url)
 
         # ----- Creating Playlist QListView widget ------ #
         self.playlistView = QListView()
@@ -272,11 +273,18 @@ class Window(QMainWindow):
 
         # ------------ Setting widgets and Layout ---------- #
         self.vbox   = QVBoxLayout()
+        self.hbox_0 = QHBoxLayout()
         self.hbox_1 = QHBoxLayout()
         self.hbox_2 = QHBoxLayout()
         # -- Group box widget -- #
         self.gb = QGroupBox()
         self.gb.setStyleSheet('border-radius: 10px ;''background-color:rgba(42, 42, 42, 90)')
+
+        # -- hbox_0
+        self.hbox_0.addStretch(1)
+        self.hbox_0.addWidget(self.url_input)
+        self.hbox_0.addWidget(self.go_button)
+        self.hbox_0.addStretch(1)
         # -- hbox_1 layout contains time slider and timing labels #
         self.hbox_1.addWidget(self.currentTimeLabel)
         self.hbox_1.addWidget(self.time_slider)
@@ -327,7 +335,7 @@ class Window(QMainWindow):
         self.vbox_2.addWidget(self.playlistView)
         self.vbox_2.addLayout(self.hbox_4)
         self.stack2.setLayout(self.vbox_2)
-
+        self.vbox.addLayout(self.hbox_0)
         self.stack = QStackedWidget()
         self.stack.addWidget(self.stack1)
         self.stack.addWidget(self.stack2)
@@ -336,11 +344,41 @@ class Window(QMainWindow):
         self.vbox.addLayout(self.hbox_1)
         self.vbox.addWidget(self.gb)
         self.vbox.setAlignment(Qt.AlignBottom)
+
+
         # -- set vbox layout to main window  -- #
         widget = QWidget()
         widget.setLayout(self.vbox)
         self.setCentralWidget(widget)
     # --- end of UI function ----#
+
+    def load_url(self):
+        file_test = 'test/test.avi'
+        self.playlist.addMedia(QMediaContent(QUrl.fromLocalFile(file_test)))
+
+        self.model.layoutChanged.emit()
+        self.url_input.clear()
+        self.timer.start(2000)
+
+    def play_playlist_item(self):
+            # Останавливаем таймер, чтобы он не запускался повторно
+        self.timer.stop()
+            # Запускаем воспроизведение текущего элемента плейлиста
+        self.mediaPlayer.play()
+
+        self.previous.setEnabled(True)
+        self.next.setEnabled(True)
+        self.skip_back.setEnabled(True)
+        self.play.setEnabled(True)
+        self.stop.setEnabled(True)
+        self.skip_forward.setEnabled(True)
+        self.playback.setEnabled(True)
+        self.pb_speed.setEnabled(True)
+        self.aspr.setEnabled(True)
+        self.p_play.setEnabled(True)
+        self.rm.setEnabled(True)
+
+
 
     # ---- Function to Resize video display --- #
     def resizeEvent(self, event):
@@ -380,6 +418,42 @@ class Window(QMainWindow):
     def ply(self):
         self.playlist.setCurrentIndex(self.i)
         self.mediaPlayer.play()
+
+    # --- Добавление функции Drag-and-Drop
+
+    def dragEnterEvent(self, e):
+        if e.mimeData().hasUrls():
+            e.acceptProposedAction()
+
+    def dropEvent(self, e):
+        for url in e.mimeData().urls():
+            self.playlist.addMedia(
+                QMediaContent(url)
+            )
+
+        self.model.layoutChanged.emit()
+
+        self.previous.setEnabled(True)
+        self.next.setEnabled(True)
+        self.skip_back.setEnabled(True)
+        self.play.setEnabled(True)
+        self.stop.setEnabled(True)
+        self.skip_forward.setEnabled(True)
+        self.playback.setEnabled(True)
+        self.pb_speed.setEnabled(True)
+        self.aspr.setEnabled(True)
+        self.p_play.setEnabled(True)
+        self.rm.setEnabled(True)
+
+        # Если не воспроизводится, переместимся к первому из новых и начнем воспроизведение.
+        if self.mediaPlayer.state() != QMediaPlayer.PlayingState:
+            i = self.playlist.mediaCount() - len(e.mimeData().urls())
+            self.playlist.setCurrentIndex(i)
+            #self.mediaPlayer.play()
+
+
+
+        # Добавьте другие необходимые действия для активации других функций.
 
     # --- Function to Remove the selected file from playlist --- #
     def remove(self):
